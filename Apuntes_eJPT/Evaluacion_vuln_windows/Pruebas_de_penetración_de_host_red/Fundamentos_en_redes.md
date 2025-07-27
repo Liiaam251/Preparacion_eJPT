@@ -1,6 +1,6 @@
 #  Fundamentos de Redes y Modelo OSI
 
-##  ¿Qué es una red?
+##  ¿Qué es una red informática?
 
 Una red informática es un conjunto de dispositivos conectados entre sí que intercambian información mediante protocolos de comunicación. Permiten compartir recursos (archivos, impresoras, Internet, etc.).
 
