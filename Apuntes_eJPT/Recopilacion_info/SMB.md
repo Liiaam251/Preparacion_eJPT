@@ -62,57 +62,6 @@ set RHOSTS <IP>
 run
 ```
 
-### 3. Enumerar usuarios
-```
-use auxiliary/scanner/smb/smb_enumusers
-set RHOSTS <IP>
-run
-```
-
-### 4. Enumerar sesiones activas
-```
-use auxiliary/scanner/smb/smb_enumsessions
-set RHOSTS <IP>
-run
-```
-
-### 5. Ver información del sistema
-```
-use auxiliary/scanner/smb/smb_version
-set RHOSTS <IP>
-run
-```
-
----
-
-## Fuerza bruta de credenciales SMB con Metasploit
-
-```
-use auxiliary/scanner/smb/smb_login
-set RHOSTS <IP>
-set USER_FILE /ruta/al/diccionario/usuarios.txt
-set PASS_FILE /ruta/al/diccionario/contraseñas.txt
-set STOP_ON_SUCCESS true
-run
-```
-
-Parámetros:
-- `USER_FILE`: diccionario de usuarios
-- `PASS_FILE`: diccionario de contraseñas
-- `STOP_ON_SUCCESS`: se detiene al encontrar credenciales válidas
-
----
----
-
-# Targeting SMB (smbclient + brute force + enumeration)
-
-## 1. Introducción
-- **SMB (Server Message Block):** protocolo usado en Windows para compartir archivos, impresoras y otros recursos en red.
-- **NetBIOS/SMB Enumeration:** puede revelar usuarios, recursos compartidos y credenciales débiles.
-- Objetivo: **obtener acceso a shares SMB y explotar información sensible**.
-
----
-
 ## 2. Enumeración básica con Nmap
 ```bash
 # Detectar puerto SMB (445)
