@@ -22,6 +22,8 @@ curl -v -I http://dominio.com
 ```bash
 curl -v -X GET http://dominio.com
 curl -v -X PUT http://dominio.com
+curl -X OPTIONS demo.ine.local -v
+(mira opciones del servidor de manera más rápida que burp)
 ```
 - `-X` → permite elegir el método HTTP a usar (GET, POST, PUT, DELETE, OPTIONS…).  
 
