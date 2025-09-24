@@ -41,6 +41,12 @@ run autoroute -s 10.0.28.0/20
 ```
 Esto enruta el tráfico hacia esa subred a través de la sesión Meterpreter.
 
+piNG:
+````
+for /L %i in (16,1,31) do start /b cmd /c "for /L %j in (1,1,254) do @ping -n 1 -w 200 10.4.%i.%j > nul && echo 10.4.%i.%j is up"
+
+https://www.rubyguides.com/2012/02/cli-ninja-ping-sweep/
+````
 ---
 
 ### Paso 4: Mandar la sesión al background y renombrarla
